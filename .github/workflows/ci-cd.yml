@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI/CD
 
 env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -7,10 +7,11 @@ env:
 on:
   push:
     branches:
-      - main
+      - master
+      - develop
   pull_request:
     branches:
-      - main
+      - master
 
 jobs:
   test:
@@ -28,30 +29,22 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run tests
-        run: npm test
+      - name: Install dependencies for ChromeHeadless
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libnss3 gconf-service libgconf-2-4 fonts-liberation
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: test
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18.x'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build Project Artifacts
-        run: npm run build
+      - name: Run tests with code coverage
+        run: npm run test -- --no-watch --code-coverage
 
       - name: Install Vercel CLI
         run: npm install -g vercel
 
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=production --token=${{secrets.VERCEL_TOKEN}}
+
+      - name: Build Project Artifacts
+        run: npm run build
+
       - name: Deploy Project Artifacts to Vercel
-        run: vercel --prod --token ${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prod --token=${{secrets.VERCEL_TOKEN}}
